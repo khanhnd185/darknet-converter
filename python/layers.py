@@ -2,14 +2,15 @@ from operator import ge
 import keras
 
 def get_activation(name):
-    if name == "leaky_relu": return "leaky"
+    if isinstance(name, keras.layers.LeakyReLU): return "leaky"
     return "relu"
 
 @keras.saving.register_keras_serializable()
 class Dense(keras.layers.Dense):
   def export(self):
-    act = get_activation(self.activation.__name__)
+    act = get_activation(self.activation)
     return f""""\
+# {self.name}
 [connected]
 output={self.units}
 activation={act}
@@ -18,15 +19,33 @@ activation={act}
 
 
 @keras.saving.register_keras_serializable()
-class Conv2DSynabro(keras.layers.Conv2D):
+class DepthwiseConv2D(keras.layers.DepthwiseConv2D):
   def export(self):
-    act = get_activation(self.activation.__name__)
+    act = get_activation(self.activation)
     return f""""\
+# {self.name}
+[convolutional]
+filters={self.filters}
+#groups=
+size={self.kernel_size[0]}
+stride={self.strides[0]}
+pad={self.padding[0][1]}
+activation={act}
+
+"""
+
+
+@keras.saving.register_keras_serializable()
+class Conv2D(keras.layers.Conv2D):
+  def export(self):
+    act = get_activation(self.activation)
+    return f""""\
+# {self.name}
 [convolutional]
 filters={self.filters}
 size={self.kernel_size[0]}
 stride={self.strides[0]}
-pad={self.padding[0][1]}
+#pad=
 activation={act}
 
 """
@@ -36,6 +55,7 @@ class MaxPooling2D(keras.layers.MaxPooling2D):
   def export(self):
     
     return f"""\
+# {self.name}
 [maxpool]
 size={self.pool_size}
 stride={self.strides[0]}
@@ -47,6 +67,7 @@ stride={self.strides[0]}
 class Concatenate(keras.layers.Concatenate):
   def export(self):
     return f"""\
+# {self.name}
 [route]
 layers = -1, 8
 
@@ -57,6 +78,7 @@ layers = -1, 8
 class UpSampling2D(keras.layers.UpSampling2D):
   def export(self):
     return f"""\
+# {self.name}
 [upsample]
 stride={self.size[0]}
 
