@@ -72,9 +72,18 @@ class Converter():
     content = f"# Model {self.model_name}\n\n"
     for layer in self.darknet_model.layers:
       if (isinstance(layer, InputLayer)): continue
-      content += layer.export()
+      content += layer.export_cfg()
     open(f"./{self.model_name}/{self.model_name}.cfg","w").write(content)
 
+    print(f"[I] Export darknet weights '{self.model_name}'.")
+    major, minor, revision = 0, 2, 0
+    f = open(f"./{self.model_name}/{self.model_name}.weights","wb")
+    f.write(bytes([major, minor, revision]))
+    f.write(np.ndarray((1), dtype="int64", buffer=bytes([0])).tobytes())
+    for layer in self.darknet_model.layers:
+      if (isinstance(layer, InputLayer)): continue
+      layer.export_weight(f)
+    f.close()
 
   def optimize(
       self
